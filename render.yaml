@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: smart-pothole-backend
+    env: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: AI_URL
+        sync: false
+      - key: CLIENT_URL
+        sync: false
+  - type: web
+    name: smart-pothole-ai
+    env: python
+    rootDir: ai_model
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: MODEL_PATH
+        value: model/pothole_classifier.keras

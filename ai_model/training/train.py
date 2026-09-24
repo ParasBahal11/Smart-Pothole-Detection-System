@@ -1,0 +1,5 @@
+import tensorflow as tf, pathlib
+DATA=pathlib.Path(__file__).resolve().parents[1]/'dataset';OUT=pathlib.Path(__file__).resolve().parents[1]/'model';OUT.mkdir(exist_ok=True)
+train=tf.keras.utils.image_dataset_from_directory(DATA/'train',image_size=(224,224),batch_size=32,label_mode='binary'); val=tf.keras.utils.image_dataset_from_directory(DATA/'val',image_size=(224,224),batch_size=32,label_mode='binary')
+base=tf.keras.applications.MobileNetV2(input_shape=(224,224,3),include_top=False,weights='imagenet');base.trainable=False
+inputs=tf.keras.Input((224,224,3));x=tf.keras.applications.mobilenet_v2.preprocess_input(inputs);x=base(x,training=False);x=tf.keras.layers.GlobalAveragePooling2D()(x);x=tf.keras.layers.Dropout(.25)(x);outputs=tf.keras.layers.Dense(1,activation='sigmoid')(x);m=tf.keras.Model(inputs,outputs);m.compile(optimizer='adam',loss='binary_crossentropy',metrics=['accuracy']);m.fit(train,validation_data=val,epochs=10);m.save(OUT/'pothole_classifier.keras');print('Saved',OUT/'pothole_classifier.keras')

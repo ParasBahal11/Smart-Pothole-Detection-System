@@ -1,0 +1,2 @@
+# TensorFlow model
+This service loads `model/pothole_classifier.keras`. The supplied training script trains a binary pothole/normal classifier using TensorFlow transfer learning. Put your labeled images into `dataset/train/pothole`, `dataset/train/normal`, `dataset/val/pothole`, and `dataset/val/normal`, then run `python training/train.py`. The synopsis says TensorFlow is used for pothole detection; this implementation keeps the AI service separate from MERN.
