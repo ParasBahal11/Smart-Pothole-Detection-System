@@ -1,8 +1,10 @@
 node_modules/
 .venv/
-.env
 __pycache__/
 *.pyc
 backend/uploads/
 frontend/dist/
 ai_model/model/*.keras
+
+backend/.env
+frontend/.env
