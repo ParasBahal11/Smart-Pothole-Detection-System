@@ -18,6 +18,7 @@ export default function ReportForm({ token, onDone, onError }) {
       onError?.('Use JPG, PNG, or WebP images only.');
       return;
     }
+    if (preview) URL.revokeObjectURL(preview);
     setFile(f);
     setPreview(URL.createObjectURL(f));
     setMsg('');
@@ -56,8 +57,8 @@ export default function ReportForm({ token, onDone, onError }) {
         headers: authHeaders(token, false),
         body: fd,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Submit failed');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || `Submit failed (${res.status})`);
 
       const label = data.detection?.label || 'unknown';
       const conf = Math.round((data.detection?.confidence || 0) * 100);

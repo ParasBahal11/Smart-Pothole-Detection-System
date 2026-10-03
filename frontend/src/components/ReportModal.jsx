@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
+import { Star } from 'lucide-react';
 import { api, authHeaders, baseUrl } from '../api';
 
 function channelLabel(status) {
   return (status || 'queued').replace(/_/g, ' ');
 }
 
-export default function ReportModal({ report, agency, role, token, onClose, onUpdated, onError }) {
+export default function ReportModal({ report, agency, role, token, onClose, onUpdated, onStatusUpdated, onError }) {
   const [status, setStatus] = useState(report.status);
   const [channelStatus, setChannelStatus] = useState(
     role === 'contractor'
@@ -13,24 +14,42 @@ export default function ReportModal({ report, agency, role, token, onClose, onUp
       : report.complaintRouting?.government?.status || 'sent'
   );
   const [busy, setBusy] = useState(false);
+  const [rating, setRating] = useState(report.rating || 0);
+  const [feedback, setFeedback] = useState(report.feedback || '');
+  const [completionImage, setCompletionImage] = useState(null);
   const conf = Math.round((report.detection?.confidence || 0) * 100);
   const myLane = role === 'contractor' ? 'City road contractor' : 'Government';
 
   const save = async () => {
     if (!agency) return onClose();
+    if (completionImage && status !== 'Repaired') {
+      onError?.('Mark the report as repaired before uploading its completion photo.');
+      return;
+    }
     setBusy(true);
     try {
-      await api(`/reports/${report._id}/status`, {
+      const statusResult = await api(`/reports/${report._id}/status`, {
         method: 'PATCH',
         headers: authHeaders(token),
         body: JSON.stringify({ status }),
       });
-      await api(`/reports/${report._id}/channel`, {
+      const channelResult = await api(`/reports/${report._id}/channel`, {
         method: 'PATCH',
         headers: authHeaders(token),
         body: JSON.stringify({ status: channelStatus }),
       });
-      onUpdated();
+      if (completionImage) {
+        const form = new FormData();
+        form.append('image', completionImage);
+        await api(`/reports/${report._id}/completion-image`, {
+          method: 'PATCH',
+          headers: authHeaders(token, false),
+          body: form,
+        });
+      }
+      const notification = channelResult.emailNotification || statusResult.emailNotification;
+      if (notification) onStatusUpdated?.({ emailNotification: notification });
+      else onUpdated();
     } catch (e) {
       onError?.(e.message);
     } finally {
@@ -45,6 +64,22 @@ export default function ReportModal({ report, agency, role, token, onClose, onUp
       await api(`/reports/${report._id}`, {
         method: 'DELETE',
         headers: authHeaders(token, false),
+      });
+      onUpdated();
+    } catch (e) {
+      onError?.(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveFeedback = async () => {
+    setBusy(true);
+    try {
+      await api(`/reports/${report._id}/feedback`, {
+        method: 'PATCH',
+        headers: authHeaders(token),
+        body: JSON.stringify({ rating, feedback }),
       });
       onUpdated();
     } catch (e) {
@@ -77,6 +112,12 @@ export default function ReportModal({ report, agency, role, token, onClose, onUp
             <p style={{ color: '#fff' }}>No image</p>
           )}
         </div>
+        {report.resolutionImageUrl && (
+          <div className="completion-photo">
+            <h3>Repair completed</h3>
+            <img src={baseUrl + report.resolutionImageUrl} alt="Completed pothole repair" />
+          </div>
+        )}
         <div className="modal-body">
           <h2 id="report-title">{report.detection?.label || 'Road report'}</h2>
           <p style={{ margin: 0, color: 'var(--muted)' }}>
@@ -121,6 +162,28 @@ export default function ReportModal({ report, agency, role, token, onClose, onUp
                 <div>{report.status}</div>
               )}
             </div>
+            {agency && status === 'Repaired' && (
+              <div className="meta-item">
+                <label htmlFor="completion-image">Repair completion photo</label>
+                <input
+                  id="completion-image"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (!file) return setCompletionImage(null);
+                    if (!/^image\/(jpeg|png|webp)$/i.test(file.type) || file.size > 5 * 1024 * 1024) {
+                      event.target.value = '';
+                      setCompletionImage(null);
+                      onError?.('Choose a JPG, PNG, or WebP repair photo under 5 MB.');
+                      return;
+                    }
+                    setCompletionImage(file);
+                  }}
+                />
+                <small>{completionImage?.name || 'Optional · JPG, PNG, or WebP · max 5 MB'}</small>
+              </div>
+            )}
             {agency && (
               <div className="meta-item">
                 <label>Your desk ({myLane})</label>
@@ -163,10 +226,48 @@ export default function ReportModal({ report, agency, role, token, onClose, onUp
             </div>
           </div>
 
+          {role === 'user' && report.status === 'Repaired' && (
+            <section className="report-feedback" aria-labelledby="review-heading">
+              <h3 id="review-heading">Your repair experience</h3>
+              <div className="rating-stars" role="group" aria-label="Rate your repair experience">
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={`rating-star ${value <= rating ? 'selected' : ''}`}
+                    aria-label={`${value} star${value === 1 ? '' : 's'}`}
+                    aria-pressed={rating === value}
+                    onClick={() => setRating(value)}
+                  >
+                    <Star size={22} fill={value <= rating ? 'currentColor' : 'none'} />
+                  </button>
+                ))}
+              </div>
+              <label className="sr-only" htmlFor="report-feedback">Your feedback</label>
+              <textarea
+                id="report-feedback"
+                maxLength={2000}
+                placeholder="Share what went well or what could be better..."
+                value={feedback}
+                onChange={(event) => setFeedback(event.target.value)}
+              />
+              <button type="button" className="accent" disabled={busy || !rating || !feedback.trim()} onClick={saveFeedback}>
+                {report.rating ? 'Update feedback' : 'Submit feedback'}
+              </button>
+            </section>
+          )}
+
+          {report.rating && (
+            <section className="report-feedback-display">
+              <strong>{report.rating}/5 community rating</strong>
+              <p>{report.feedback}</p>
+            </section>
+          )}
+
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {agency && (
               <button type="button" className="accent" disabled={busy} onClick={save}>
-                Save desk + status
+                Save desk, status & photo
               </button>
             )}
             {role === 'admin' && (

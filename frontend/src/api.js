@@ -9,9 +9,17 @@ export function authHeaders(token, json = true) {
 }
 
 export async function api(path, options = {}) {
-  const res = await fetch(API + path, options);
+  let res;
+  try {
+    res = await fetch(API + path, options);
+  } catch {
+    throw new Error('Cannot reach the server. Make sure the backend is running and VITE_API_URL is correct.');
+  }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || `Request failed (${res.status})`);
+  if (!res.ok) {
+    const base = data.message || `Request failed (${res.status})`;
+    throw new Error(data.detail ? `${base} (${data.detail})` : base);
+  }
   return data;
 }
 

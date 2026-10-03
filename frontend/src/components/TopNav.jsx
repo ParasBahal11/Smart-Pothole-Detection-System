@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Moon, Sun } from 'lucide-react';
 
 function initials(name = '') {
   return name
@@ -15,7 +16,7 @@ function roleLabel(role) {
   return 'Citizen';
 }
 
-export default function TopNav({ user, page, setPage, onLogout, authMode, setAuthMode }) {
+export default function TopNav({ user, page, setPage, onLogout, authMode, setAuthMode, theme, onToggleTheme }) {
   const [open, setOpen] = useState(false);
 
   const go = (p) => {
@@ -40,6 +41,18 @@ export default function TopNav({ user, page, setPage, onLogout, authMode, setAut
       </button>
 
       <div className={`nav-actions ${open ? 'open' : ''}`}>
+        <a href="#help" onClick={() => setOpen(false)}>Help</a>
+        <a href="#contact" onClick={() => setOpen(false)}>Contact</a>
+        <button
+          type="button"
+          className="theme-toggle"
+          onClick={onToggleTheme}
+          aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+          title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+        >
+          {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+          <span>{theme === 'light' ? 'Dark mode' : 'Light mode'}</span>
+        </button>
         {user ? (
           <>
             <button type="button" className={page === 'dashboard' ? 'active' : ''} onClick={() => go('dashboard')}>

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { api, authHeaders, baseUrl } from '../api';
 
 function statusClass(status) {
@@ -14,6 +14,13 @@ export default function Dashboard({ reports, agency, role, token, reload, onSele
   const [status, setStatus] = useState('all');
   const [severity, setSeverity] = useState('all');
   const [sort, setSort] = useState('newest');
+  const [feedbackSummary, setFeedbackSummary] = useState({ average: 0, count: 0, recent: [] });
+
+  useEffect(() => {
+    api('/reports/feedback/summary', { headers: authHeaders(token, false) })
+      .then(setFeedbackSummary)
+      .catch(() => setFeedbackSummary({ average: 0, count: 0, recent: [] }));
+  }, [token, reports]);
 
   const counts = useMemo(() => {
     const total = reports.length || 1;
@@ -65,12 +72,17 @@ export default function Dashboard({ reports, agency, role, token, reload, onSele
 
   const updateStatus = async (id, next) => {
     try {
-      await api(`/reports/${id}/status`, {
+      const result = await api(`/reports/${id}/status`, {
         method: 'PATCH',
         headers: authHeaders(token),
         body: JSON.stringify({ status: next }),
       });
-      onToast?.('Status updated');
+      onToast?.(
+        result.emailNotification?.sent === false
+          ? 'Status updated, but the email notification could not be sent.'
+          : 'Status updated and reporter notified by email',
+        result.emailNotification?.sent === false ? 'err' : 'ok'
+      );
       reload();
     } catch (e) {
       onToast?.(e.message, 'err');
@@ -111,6 +123,37 @@ export default function Dashboard({ reports, agency, role, token, reload, onSele
           <div className="value">{counts.repaired}</div>
         </div>
       </div>
+
+      <section className="panel community-feedback">
+        <div className="panel-head">
+          <h2>Community feedback</h2>
+          <span>{feedbackSummary.count} resolved report reviews</span>
+        </div>
+        <div className="feedback-score">
+          <strong>{feedbackSummary.count ? feedbackSummary.average.toFixed(1) : '—'}</strong>
+          <span>/ 5 average rating</span>
+        </div>
+        {feedbackSummary.recent.length > 0 ? (
+          <div className="feedback-list">
+            {feedbackSummary.recent.slice(0, 5).map((item) => (
+              <blockquote key={item._id}>
+                <span aria-label={`${item.rating} out of 5 stars`}>{'★'.repeat(item.rating)}{'☆'.repeat(5 - item.rating)}</span>
+                <p>{item.feedback}</p>
+                {item.resolutionImageUrl && (
+                  <img
+                    className="feedback-work-image"
+                    src={baseUrl + item.resolutionImageUrl}
+                    alt="Completed road repair"
+                    loading="lazy"
+                  />
+                )}
+              </blockquote>
+            ))}
+          </div>
+        ) : (
+          <p className="feedback-empty">No reviews have been submitted yet.</p>
+        )}
+      </section>
 
       <div className="panel">
         <div className="panel-head">

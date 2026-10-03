@@ -10,6 +10,7 @@ import ReportForm from './components/ReportForm';
 import RoadMap from './components/RoadMap';
 import ReportModal from './components/ReportModal';
 import ToastHost from './components/ToastHost';
+import SiteFooter from './components/SiteFooter';
 
 function headingFor(user) {
   if (user.role === 'admin') {
@@ -31,14 +32,26 @@ function headingFor(user) {
 }
 
 function App() {
+  const [theme, setTheme] = useState(() => localStorage.getItem('roadguard-theme') === 'dark' ? 'dark' : 'light');
   const [token, setToken] = useState(() => localStorage.getItem('token'));
-  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('user') || 'null'));
+  const [user, setUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('user') || 'null');
+    } catch {
+      return null;
+    }
+  });
   const [page, setPage] = useState('dashboard');
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState(null);
   const [toasts, setToasts] = useState([]);
   const [authMode, setAuthMode] = useState('login');
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('roadguard-theme', theme);
+  }, [theme]);
 
   const toast = useCallback((text, type = 'ok') => {
     const id = Date.now() + Math.random();
@@ -54,7 +67,8 @@ function App() {
   };
 
   const logout = () => {
-    localStorage.clear();
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setToken(null);
     setUser(null);
     setReports([]);
@@ -105,6 +119,8 @@ function App() {
         onLogout={logout}
         authMode={authMode}
         setAuthMode={setAuthMode}
+        theme={theme}
+        onToggleTheme={() => setTheme((current) => current === 'light' ? 'dark' : 'light')}
       />
 
       {!token || !user ? (
@@ -133,10 +149,13 @@ function App() {
               onDone={(report) => {
                 setPage('dashboard');
                 loadReports();
-                if (report?.complaintRouting?.dispatched) {
-                  toast('Pothole complaint sent to Government and City Road Contractor');
+                const complaintToast = report?.complaintRouting?.dispatched
+                  ? 'Complaint registered and sent to Government and City Road Contractor'
+                  : 'Complaint registered';
+                if (report?.emailNotification?.sent === false) {
+                  toast(`${complaintToast}, but the confirmation email could not be sent.`, 'err');
                 } else {
-                  toast('Report submitted');
+                  toast(`${complaintToast}. Confirmation email sent.`);
                 }
               }}
               onError={(m) => toast(m, 'err')}
@@ -169,9 +188,20 @@ function App() {
             setSelected(null);
             toast('Report updated');
           }}
+          onStatusUpdated={(result) => {
+            loadReports();
+            setSelected(null);
+            toast(
+              result?.emailNotification?.sent === false
+                ? 'Status updated, but the email notification could not be sent.'
+                : 'Report status and email notification updated',
+              result?.emailNotification?.sent === false ? 'err' : 'ok'
+            );
+          }}
           onError={(m) => toast(m, 'err')}
         />
       )}
+      <SiteFooter />
       <ToastHost toasts={toasts} />
     </div>
   );
