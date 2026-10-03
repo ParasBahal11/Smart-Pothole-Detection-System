@@ -11,9 +11,12 @@ export default function AuthScreen({ onSuccess, mode, setMode }) {
   const [turnstileToken, setTurnstileToken] = useState('');
   const [widgetReset, setWidgetReset] = useState(0);
   const [step, setStep] = useState('credentials');
+  const [resetStep, setResetStep] = useState('');
   const [otp, setOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [otpDestination, setOtpDestination] = useState('');
   const [devNote, setDevNote] = useState('');
+  const [notice, setNotice] = useState('');
   const [cooldown, setCooldown] = useState(0);
 
   useEffect(() => {
@@ -29,6 +32,39 @@ export default function AuthScreen({ onSuccess, mode, setMode }) {
     setError('');
     setBusy(true);
     try {
+      if (resetStep === 'request') {
+        if (!turnstileToken) {
+          setError('Complete the Cloudflare security check first.');
+          return;
+        }
+        const data = await api('/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: form.email, turnstileToken }),
+        });
+        setNotice(data.message);
+        setOtp('');
+        setTurnstileToken('');
+        setWidgetReset((n) => n + 1);
+        setResetStep('verify');
+        return;
+      }
+
+      if (resetStep === 'verify') {
+        const data = await api('/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: form.email, code: otp, password: newPassword }),
+        });
+        setNotice(data.message);
+        setResetStep('');
+        setStep('credentials');
+        setOtp('');
+        setNewPassword('');
+        setForm((current) => ({ ...current, password: '' }));
+        return;
+      }
+
       if (step === 'credentials') {
         if (!turnstileToken) {
           setError('Complete the Cloudflare security check first.');
@@ -44,6 +80,7 @@ export default function AuthScreen({ onSuccess, mode, setMode }) {
           }),
         });
         setOtpDestination(data.destination);
+        setNotice('');
         setDevNote(data.devNote || '');
         setCooldown(60);
         setOtp('');
@@ -78,6 +115,17 @@ export default function AuthScreen({ onSuccess, mode, setMode }) {
     setWidgetReset((n) => n + 1);
   };
 
+  const cancelPasswordReset = () => {
+    setResetStep('');
+    setOtp('');
+    setNewPassword('');
+    setError('');
+    setNotice('');
+    setTurnstileToken('');
+    setStep('credentials');
+    setWidgetReset((n) => n + 1);
+  };
+
   return (
     <div className="auth-shell">
       <aside className="auth-visual">
@@ -95,14 +143,22 @@ export default function AuthScreen({ onSuccess, mode, setMode }) {
       <section className="auth-panel">
         <div className="auth-card">
           <h2>
-            {step === 'verification'
+            {resetStep === 'request'
+              ? 'Reset your password'
+              : resetStep === 'verify'
+                ? 'Choose a new password'
+                : step === 'verification'
               ? 'Verify your account'
               : mode === 'login'
                 ? 'Sign in'
                 : 'Create account'}
           </h2>
           <p>
-            {step === 'verification'
+            {resetStep === 'request'
+              ? 'Enter your account email and we will send a password reset code if the account exists.'
+              : resetStep === 'verify'
+                ? `Enter the six-digit code sent to ${form.email}, then choose a new password.`
+                : step === 'verification'
               ? `Enter the six-digit code sent by ${form.channel === 'email' ? 'email' : 'SMS'} to ${otpDestination}.`
               : mode === 'login'
                 ? 'Access your dashboard and report road damage.'
@@ -110,7 +166,7 @@ export default function AuthScreen({ onSuccess, mode, setMode }) {
           </p>
 
           <form onSubmit={submit}>
-            {step === 'credentials' && mode === 'register' && (
+            {!resetStep && step === 'credentials' && mode === 'register' && (
               <div className="field">
                 <label htmlFor="name">Full name</label>
                 <input
@@ -123,7 +179,62 @@ export default function AuthScreen({ onSuccess, mode, setMode }) {
                 />
               </div>
             )}
-            {step === 'credentials' ? (
+            {resetStep === 'request' ? (
+              <>
+                <div className="field">
+                  <label htmlFor="email">Email</label>
+                  <input
+                    id="email"
+                    type="email"
+                    required
+                    value={form.email}
+                    onChange={set('email')}
+                    placeholder="you@city.gov"
+                    autoComplete="email"
+                  />
+                </div>
+                <div className="field">
+                  <label>Cloudflare security check</label>
+                  <TurnstileWidget
+                    siteKey={SITE_KEY}
+                    resetKey={`password-reset-${widgetReset}`}
+                    onToken={setTurnstileToken}
+                  />
+                </div>
+              </>
+            ) : resetStep === 'verify' ? (
+              <>
+                <div className="field">
+                  <label htmlFor="reset-otp">Reset code</label>
+                  <input
+                    id="reset-otp"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    pattern="[0-9]{6}"
+                    maxLength={6}
+                    required
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="6-digit code"
+                    className="otp-input"
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="new-password">New password</label>
+                  <input
+                    id="new-password"
+                    type="password"
+                    required
+                    minLength={6}
+                    autoComplete="new-password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="At least 6 characters"
+                  />
+                </div>
+              </>
+            ) : step === 'credentials' ? (
               <>
                 <div className="field">
                   <label htmlFor="email">Email</label>
@@ -204,31 +315,58 @@ export default function AuthScreen({ onSuccess, mode, setMode }) {
                 ? 'Please wait…'
                 : step === 'verification'
                   ? 'Verify and continue'
-                  : 'Send verification code'}
+                  : resetStep === 'request'
+                    ? 'Send reset code'
+                    : resetStep === 'verify'
+                      ? 'Reset password'
+                      : 'Send verification code'}
             </button>
           </form>
 
           {error && <div className="error-box" role="alert">{error}</div>}
+          {notice && <div className="info-box" role="status">{notice}</div>}
           {step === 'verification' && devNote && <div className="info-box">{devNote}</div>}
 
-          {step === 'verification' ? (
+          {resetStep ? (
+            <button type="button" className="linkish" onClick={cancelPasswordReset}>
+              Back to sign in
+            </button>
+          ) : step === 'verification' ? (
             <button type="button" className="linkish" onClick={returnToCredentials}>
               {cooldown > 0 ? `Back (you can request a new code in ${cooldown}s)` : 'Back to request another code'}
             </button>
           ) : (
-            <button
-              type="button"
-              className="linkish"
-              onClick={() => {
-                setMode(mode === 'login' ? 'register' : 'login');
-                setError('');
-                setTurnstileToken('');
-                setStep('credentials');
-                setWidgetReset((n) => n + 1);
-              }}
-            >
-              {mode === 'login' ? 'Need an account? Register' : 'Already registered? Sign in'}
-            </button>
+            <>
+              {mode === 'login' && (
+                <button
+                  type="button"
+                  className="linkish"
+                  onClick={() => {
+                    setResetStep('request');
+                    setError('');
+                    setNotice('');
+                    setTurnstileToken('');
+                    setWidgetReset((n) => n + 1);
+                  }}
+                >
+                  Forgot password?
+                </button>
+              )}
+              <button
+                type="button"
+                className="linkish"
+                onClick={() => {
+                  setMode(mode === 'login' ? 'register' : 'login');
+                  setError('');
+                  setNotice('');
+                  setTurnstileToken('');
+                  setStep('credentials');
+                  setWidgetReset((n) => n + 1);
+                }}
+              >
+                {mode === 'login' ? 'Need an account? Register' : 'Already registered? Sign in'}
+              </button>
+            </>
           )}
         </div>
       </section>

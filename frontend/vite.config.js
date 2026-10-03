@@ -24,5 +24,13 @@ export default defineConfig(({ mode }) => {
         '/uploads': proxyOptions,
       },
     },
+    preview: {
+      port: 4173,
+      host: true,
+      proxy: {
+        '/api': proxyOptions,
+        '/uploads': proxyOptions,
+      },
+    },
   };
 });

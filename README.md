@@ -46,6 +46,7 @@ Check: `http://localhost:5000/api/health` (backend + DB) and `http://localhost:8
 
 ## OTP login — how to make it work
 Every login/registration needs a 6-digit OTP, sent by email (SMTP) or SMS (Twilio).
+Use **Forgot password?** on the sign-in screen to receive a one-time reset code by email. Reset codes expire after 10 minutes, allow at most five attempts, and use the configured SMTP delivery. In local demo mode, `OTP_DEV_LOG=true` prints the code in the backend terminal.
 
 * **Easiest for demo / viva:** keep `OTP_DEV_LOG=true` in `backend/.env`. The code is printed in the backend terminal (`[OTP DEV] ...`) even if email/SMS is not configured. It is ignored automatically when `NODE_ENV=production`.
 * **Email (Gmail):** turn on 2-Step Verification, create a 16-character *App Password* (Google Account -> Security -> App passwords) and set `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=465`, `SMTP_SECURE=true`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM=RoadGuard <you@gmail.com>`.

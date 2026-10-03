@@ -143,6 +143,108 @@ r.post('/request-otp', async (req, res) => {
   }
 });
 
+r.post('/forgot-password', async (req, res) => {
+  try {
+    if (!(await requireTurnstile(req, res))) return;
+    const email = String(req.body.email || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: 'Enter a valid email address' });
+    }
+
+    const genericMessage = 'If an account exists for this email, a reset code has been sent.';
+    const user = await User.findOne({ email });
+    if (!user) return res.json({ message: genericMessage });
+
+    const existingChallenge = await AuthOtp.findOne({ email, purpose: 'reset' });
+    if (existingChallenge && Date.now() - existingChallenge.createdAt.getTime() < OTP_RESEND_DELAY_MS) {
+      return res.json({ message: genericMessage });
+    }
+
+    const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
+    const secret = process.env.JWT_SECRET;
+    if (!secret) throw new Error('JWT_SECRET is not configured');
+    const otpHash = createHmac('sha256', secret).update(`${email}:reset:${code}`).digest('hex');
+    const challenge = await AuthOtp.findOneAndUpdate(
+      { email, purpose: 'reset' },
+      {
+        email,
+        purpose: 'reset',
+        channel: 'email',
+        otpHash,
+        userId: user._id,
+        attempts: 0,
+        createdAt: new Date(),
+        expiresAt: new Date(Date.now() + OTP_TTL_MS),
+      },
+      { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
+    );
+
+    try {
+      await sendOtp({ channel: 'email', destination: user.otpEmail || user.email, code });
+    } catch (error) {
+      await AuthOtp.deleteOne({ _id: challenge._id });
+      console.error('Password reset code delivery failed:', error);
+    }
+    return res.json({ message: genericMessage });
+  } catch (e) {
+    console.error('Password reset request failed:', e);
+    res.status(500).json({ message: 'Could not start password reset. Please try again.' });
+  }
+});
+
+r.post('/reset-password', async (req, res) => {
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const code = String(req.body.code || '');
+    const { password } = req.body;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !/^\d{6}$/.test(code)) {
+      return res.status(400).json({ message: 'Enter a valid email and six-digit reset code' });
+    }
+    if (typeof password !== 'string' || password.length < 6) {
+      return res.status(400).json({ message: 'Password must contain at least 6 characters' });
+    }
+
+    const challenge = await AuthOtp.findOne({ email, purpose: 'reset' });
+    if (!challenge || challenge.expiresAt <= new Date()) {
+      if (challenge) await AuthOtp.deleteOne({ _id: challenge._id });
+      return res.status(400).json({ message: 'Reset code expired or invalid. Request a new code.' });
+    }
+    if (challenge.attempts >= OTP_MAX_ATTEMPTS) {
+      return res.status(429).json({ message: 'Too many incorrect codes. Request a new code.' });
+    }
+
+    const secret = process.env.JWT_SECRET;
+    if (!secret) throw new Error('JWT_SECRET is not configured');
+    const candidate = createHmac('sha256', secret).update(`${email}:reset:${code}`).digest();
+    const expected = Buffer.from(challenge.otpHash, 'hex');
+    if (candidate.length !== expected.length || !timingSafeEqual(candidate, expected)) {
+      await AuthOtp.updateOne(
+        { _id: challenge._id, attempts: { $lt: OTP_MAX_ATTEMPTS } },
+        { $inc: { attempts: 1 } }
+      );
+      return res.status(400).json({ message: 'Reset code is incorrect' });
+    }
+
+    const consumedChallenge = await AuthOtp.findOneAndDelete({
+      _id: challenge._id,
+      otpHash: challenge.otpHash,
+      expiresAt: { $gt: new Date() },
+      attempts: { $lt: OTP_MAX_ATTEMPTS },
+    });
+    if (!consumedChallenge) {
+      return res.status(400).json({ message: 'Reset code expired or already used. Request a new code.' });
+    }
+    const passwordHash = await bcrypt.hash(password, 10);
+    const result = await User.updateOne({ _id: challenge.userId, email }, { $set: { password: passwordHash } });
+    if (!result.matchedCount) return res.status(404).json({ message: 'Account no longer exists' });
+    await AuthOtp.deleteMany({ email, purpose: 'login' });
+    return res.json({ message: 'Password reset successfully. You can now sign in with your new password.' });
+  } catch (e) {
+    console.error('Password reset failed:', e);
+    res.status(500).json({ message: 'Could not reset password. Please try again.' });
+  }
+});
+
 r.post('/verify-otp', async (req, res) => {
   try {
     const email = String(req.body.email || '').trim().toLowerCase();

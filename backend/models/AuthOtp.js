@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 const authOtpSchema = new mongoose.Schema({
   email: { type: String, required: true, lowercase: true, trim: true },
-  purpose: { type: String, required: true, enum: ['login', 'register'] },
+  purpose: { type: String, required: true, enum: ['login', 'register', 'reset'] },
   channel: { type: String, required: true, enum: ['email', 'sms'] },
   otpHash: { type: String, required: true },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
