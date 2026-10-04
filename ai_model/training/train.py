@@ -202,6 +202,9 @@ def main():
 	test_labels, test_scores = probabilities(best_model, test_data)
 	metrics = binary_metrics(test_labels, test_scores, threshold)
 	best_model.save(MODEL_PATH)
+	# Export the lightweight TFLite model that the Flask/Render service actually loads
+	converter = tf.lite.TFLiteConverter.from_keras_model(best_model)
+	(OUTPUT_DIR / 'pothole_classifier.tflite').write_bytes(converter.convert())
 
 	evaluation = {
 		'evaluation_split': 'test',

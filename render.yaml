@@ -35,4 +35,4 @@ services:
     startCommand: gunicorn app:app --workers 1 --timeout 180
     envVars:
       - key: MODEL_PATH
-        value: model/pothole_classifier.keras
+        value: model/pothole_classifier.tflite

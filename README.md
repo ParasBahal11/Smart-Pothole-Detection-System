@@ -72,8 +72,8 @@ New API routes: `POST /api/reports/:id/work-images` (agency), `GET /api/contact/
 * **SMS:** off by default (`SMS_OTP_ENABLED=false`), the option is hidden. Twilio needs a Twilio-issued sender number, trial accounts only text verified numbers, and SMS to India needs extra approval. Phone is optional when registering with email OTP.
 * **Admin / contractor** sign in with password only. Their forgot-password code goes to `ADMIN_OTP_EMAIL` / `CONTRACTOR_OTP_EMAIL`. Seeded logins: `ADMIN_EMAIL` / `ADMIN_PASSWORD` and `CONTRACTOR_EMAIL` / `CONTRACTOR_PASSWORD` in `backend/.env`.
 
-## TensorFlow model
-The AI server expects `ai_model/model/pothole_classifier.keras` (already included). To retrain, create `dataset/train`, `dataset/val` **and `dataset/test`** (each with `normal/` and `pothole/`, no duplicate images across splits) and run `python training/train.py`. The binary classifier returns pothole/normal and confidence; report submission is accepted only when it positively detects a pothole at 75% confidence or higher, and fails closed if AI is unavailable. Bounding boxes need a separate object-detection model.
+## TensorFlow / TFLite model
+The AI server loads `ai_model/model/pothole_classifier.tflite` (already included, converted from the trained `pothole_classifier.keras`) through the lightweight LiteRT runtime, so it fits in Render's free plan. After retraining, commit the regenerated `.tflite` file. To retrain, create `dataset/train`, `dataset/val` **and `dataset/test`** (each with `normal/` and `pothole/`, no duplicate images across splits) and run `python training/train.py`. The binary classifier returns pothole/normal and confidence; report submission is accepted only when it positively detects a pothole at 75% confidence or higher, and fails closed if AI is unavailable. Bounding boxes need a separate object-detection model.
 
 ## Auth (Cloudflare Turnstile)
 Login and registration are protected with [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/). Dummy always-pass keys are set for local development:

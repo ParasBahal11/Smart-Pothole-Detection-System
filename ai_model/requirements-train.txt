@@ -1,0 +1,3 @@
+# Only needed on your own computer to retrain the model (NOT used on Render)
+-r requirements.txt
+tensorflow==2.18.0
