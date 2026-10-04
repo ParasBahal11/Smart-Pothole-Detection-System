@@ -58,6 +58,7 @@ function aiBase() {
 
 const NEEDS_PHOTO = 'Add at least one photo of the completed work before marking this complaint as Repaired';
 const MIN_POTHOLE_CONFIDENCE = 0.75;
+const AI_REQUEST_TIMEOUT_MS = 150_000;
 const hasWorkPhoto = (report) => (report.workImages || []).length > 0;
 
 function notifyStatus(report, previousStatus) {
@@ -75,13 +76,23 @@ async function detect(file) {
       new Blob([fs.readFileSync(file.path)], { type: 'application/octet-stream' }),
       file.originalname
     );
-    const resp = await fetch(`${aiBase()}/predict`, { method: 'POST', body: fd });
+    const resp = await fetch(`${aiBase()}/predict`, {
+      method: 'POST',
+      body: fd,
+      signal: AbortSignal.timeout(AI_REQUEST_TIMEOUT_MS),
+    });
     const result = await resp.json().catch(() => ({}));
     if (!resp.ok) {
       throw Object.assign(new Error(result.message || 'AI detection service is unavailable'), { status: 503 });
     }
     return result;
   } catch (e) {
+    if (e.name === 'TimeoutError' || e.name === 'AbortError') {
+      throw Object.assign(
+        new Error('AI detection timed out. Check that the AI service /health reports model_loaded=true, then try again.'),
+        { status: 504 }
+      );
+    }
     if (e.status) throw e;
     throw Object.assign(new Error(`AI detection is unavailable: ${e.message}`), { status: 503 });
   }

@@ -58,7 +58,7 @@ export default function ReportForm({ token, onDone, onError }) {
       return;
     }
     setBusy(true);
-    setMsg('Uploading & running AI analysis…');
+    setMsg('Uploading and checking your image with AI… The first request may take longer while the AI service starts.');
     try {
       const fd = new FormData();
       fd.append('image', file);
@@ -72,6 +72,7 @@ export default function ReportForm({ token, onDone, onError }) {
         method: 'POST',
         headers: authHeaders(token, false),
         body: fd,
+        signal: AbortSignal.timeout(180_000),
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 409 && data.duplicate) {
@@ -92,7 +93,11 @@ export default function ReportForm({ token, onDone, onError }) {
       setTimeout(() => onDone(data), 900);
     } catch (err) {
       setMsg('');
-      onError?.(err.message);
+      onError?.(
+        err.name === 'TimeoutError' || err.name === 'AbortError'
+          ? 'Report submission timed out. Check the AI service /health and try again.'
+          : err.message
+      );
     } finally {
       setBusy(false);
     }
