@@ -23,6 +23,7 @@ if tf and os.path.exists(MODEL_PATH):
  try: model=tf.keras.models.load_model(MODEL_PATH); print('Loaded TensorFlow model:',MODEL_PATH)
  except Exception as e: print('Model load failed:',e)
 else: print('No trained model found. Run training/train.py first.')
+@app.get('/')
 @app.get('/health')
 def health(): return jsonify({'ok':True,'model_loaded':model is not None,'model_path':MODEL_PATH,'threshold':threshold})
 @app.post('/predict')
