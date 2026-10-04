@@ -1,6 +1,6 @@
 flask==3.1.0
 flask-cors==5.0.0
 pillow==11.0.0
-numpy==2.0.2
+numpy==
 gunicorn==23.0.0
-ai-edge-litert==1.4.0
+ai-edge-litert==2.2.0
