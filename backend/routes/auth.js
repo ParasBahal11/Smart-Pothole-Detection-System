@@ -102,7 +102,9 @@ r.post('/request-otp', async (req, res) => {
     }
     if (!availableChannels()[channel]) {
       return res.status(400).json({
-        message: channel === 'sms' ? 'SMS verification is not available right now. Please choose email.' : 'Email verification is not configured on the server.',
+        message: channel === 'sms'
+          ? 'SMS verification is not available right now. Please choose email.'
+          : 'Email verification is not configured. The site administrator must add BREVO_API_KEY and BREVO_SENDER_EMAIL to the hosted backend settings.',
       });
     }
 
@@ -283,7 +285,7 @@ r.post('/forgot-password', async (req, res) => {
       await AuthOtp.deleteOne({ _id: challenge._id });
       console.error('Reset OTP delivery failed:', error);
       return res.status(502).json({
-        message: 'Could not send the reset code by email. Check the SMTP settings in backend/.env.',
+        message: 'Could not send the reset code. The site administrator should check BREVO_API_KEY and BREVO_SENDER_EMAIL in the hosted backend settings.',
         ...(isProduction ? {} : { detail: error.message }),
       });
     }
