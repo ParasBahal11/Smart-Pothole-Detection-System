@@ -11,7 +11,10 @@ services:
       - key: JWT_SECRET
         sync: false
       - key: AI_URL
-        sync: false
+        fromService:
+          type: web
+          name: smart-pothole-ai
+          property: host
       - key: CLIENT_URL
         sync: false
       - key: NODE_ENV

@@ -41,6 +41,8 @@ Requirements: Node.js 18+ (20 recommended), Python 3.11 or 3.12 (TensorFlow does
 
 Check: `http://localhost:5000/api/health` (backend + DB) and `http://localhost:8000/health` (AI model loaded).
 
+For Render deployments, the backend's `AI_URL` is linked to the `smart-pothole-ai` service hostname by `render.yaml`. If the services were created manually rather than synced from the Blueprint, set the backend's `AI_URL` environment variable to the AI service's public URL (for example, `https://<your-ai-service>.onrender.com`) and redeploy the backend.
+
 ## New features (v2.1)
 - **Dark / light mode** — toggle in the navbar; choice is remembered (follows system theme on first visit).
 - **Help & Contact** — navbar pages: FAQ with "how it works", and a contact form (stored in MongoDB and emailed to `SUPPORT_EMAIL`). Works without login.

@@ -50,7 +50,10 @@ const upload = multer({
 });
 
 function aiBase() {
-  return process.env.AI_URL || process.env.AI_SERVICE_URL || 'http://127.0.0.1:8000';
+  const configuredUrl = process.env.AI_URL || process.env.AI_SERVICE_URL;
+  if (!configuredUrl) return 'http://127.0.0.1:8000';
+  if (/^https?:\/\//i.test(configuredUrl)) return configuredUrl.replace(/\/+$/, '');
+  return `${/^(localhost|127\.)/i.test(configuredUrl) ? 'http' : 'https'}://${configuredUrl.replace(/\/+$/, '')}`;
 }
 
 const NEEDS_PHOTO = 'Add at least one photo of the completed work before marking this complaint as Repaired';
