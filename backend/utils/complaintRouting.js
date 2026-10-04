@@ -5,9 +5,7 @@ export function isPothole(detection) {
 }
 
 function shouldDispatch(detection) {
-  if (isPothole(detection)) return true;
-  const label = detection?.label || '';
-  return label === 'AI unavailable' || label === 'model_not_loaded';
+  return isPothole(detection);
 }
 
 function emptyChannel(status = 'queued') {
@@ -87,6 +85,14 @@ export function applyEscalation(report) {
         to,
         at: new Date(),
         reason: `${from} did not respond within the SLA window`,
+      });
+      report.timeline = report.timeline || [];
+      report.timeline.push({
+        type: 'escalated',
+        title: `Escalated from ${from} to ${to}`,
+        detail: `${from} did not respond within the SLA window`,
+        by: 'system',
+        at: new Date(),
       });
     }
     changed = true;

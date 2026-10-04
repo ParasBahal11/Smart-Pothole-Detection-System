@@ -14,12 +14,22 @@ services:
         sync: false
       - key: CLIENT_URL
         sync: false
+      - key: NODE_ENV
+        value: production
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_SENDER_EMAIL
+        sync: false
+      - key: TURNSTILE_SECRET_KEY
+        sync: false
+      - key: APP_URL
+        sync: false
   - type: web
     name: smart-pothole-ai
     env: python
     rootDir: ai_model
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
+    startCommand: gunicorn app:app --workers 1 --timeout 180
     envVars:
       - key: MODEL_PATH
         value: model/pothole_classifier.keras

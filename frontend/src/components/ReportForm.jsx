@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { API, authHeaders } from '../api';
+import { API, api, authHeaders, baseUrl } from '../api';
 
 export default function ReportForm({ token, onDone, onError }) {
   const [file, setFile] = useState(null);
@@ -10,6 +10,7 @@ export default function ReportForm({ token, onDone, onError }) {
   const [drag, setDrag] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  const [dupes, setDupes] = useState(null);
   const camRef = useRef(null);
 
   const pickFile = (f) => {
@@ -18,6 +19,7 @@ export default function ReportForm({ token, onDone, onError }) {
       onError?.('Use JPG, PNG, or WebP images only.');
       return;
     }
+    if (preview) URL.revokeObjectURL(preview);
     setFile(f);
     setPreview(URL.createObjectURL(f));
     setMsg('');
@@ -35,8 +37,22 @@ export default function ReportForm({ token, onDone, onError }) {
     );
   };
 
-  const submit = async (e) => {
-    e.preventDefault();
+  const supportExisting = async (id) => {
+    setBusy(true);
+    try {
+      await api(`/reports/${id}/support`, { method: 'POST', headers: authHeaders(token, false) });
+      setDupes(null);
+      setMsg('Thanks! Your confirmation was added to the existing complaint, no duplicate was created.');
+      setTimeout(() => onDone({ supported: true }), 900);
+    } catch (err) {
+      onError?.(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submit = async (e, confirmNew = false) => {
+    e?.preventDefault();
     if (!file || !loc) {
       setMsg('Add a road image and capture your location first.');
       return;
@@ -50,14 +66,22 @@ export default function ReportForm({ token, onDone, onError }) {
       fd.append('longitude', loc.longitude);
       if (address.trim()) fd.append('address', address.trim());
       if (notes.trim()) fd.append('notes', notes.trim());
+      if (confirmNew) fd.append('confirmNew', 'true');
 
       const res = await fetch(`${API}/reports`, {
         method: 'POST',
         headers: authHeaders(token, false),
         body: fd,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Submit failed');
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 409 && data.duplicate) {
+        // Same pothole already reported nearby: let the citizen support it instead of duplicating
+        setDupes(data.nearby || []);
+        setMsg('');
+        return;
+      }
+      if (!res.ok) throw new Error(data.message || `Submit failed (${res.status})`);
+      setDupes(null);
 
       const label = data.detection?.label || 'unknown';
       const conf = Math.round((data.detection?.confidence || 0) * 100);
@@ -173,6 +197,41 @@ export default function ReportForm({ token, onDone, onError }) {
               placeholder="Depth, traffic risk, nearby school…"
             />
           </div>
+
+          {dupes && dupes.length > 0 && (
+            <div className="dup-box" role="alert">
+              <strong>This pothole may already be reported</strong>
+              <p>A complaint exists within a few metres of your location. Support it instead of creating a duplicate; more confirmations raise its priority.</p>
+              {dupes.map((d) => (
+                <div key={d.id} className="dup-item">
+                  {d.imageUrl && <img src={baseUrl + d.imageUrl} alt="Existing complaint" />}
+                  <div>
+                    <b>{d.trackingId || 'Complaint'}</b> · {d.distance} m away
+                    <div className="muted-note">
+                      {d.address || 'No address'} · {d.status} · Severity {d.severity} · {d.supportCount} confirmation{d.supportCount === 1 ? '' : 's'}
+                    </div>
+                    {d.mine ? (
+                      <small className="muted-note">This is your own complaint.</small>
+                    ) : d.alreadySupported ? (
+                      <small className="muted-note">You already supported this one.</small>
+                    ) : (
+                      <button type="button" className="accent" disabled={busy} onClick={() => supportExisting(d.id)}>
+                        Yes, same pothole — support it
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              <div className="preview-actions">
+                <button type="button" className="secondary" disabled={busy} onClick={(e) => submit(e, true)}>
+                  It is a different pothole — submit new
+                </button>
+                <button type="button" className="ghost" disabled={busy} onClick={() => setDupes(null)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
 
           <button className="accent" disabled={busy}>
             {busy ? 'Analyzing…' : 'Analyze & submit'}

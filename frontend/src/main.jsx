@@ -10,6 +10,11 @@ import ReportForm from './components/ReportForm';
 import RoadMap from './components/RoadMap';
 import ReportModal from './components/ReportModal';
 import ToastHost from './components/ToastHost';
+import Footer from './components/Footer';
+import HelpPage from './components/HelpPage';
+import ContactPage from './components/ContactPage';
+import TrackPage from './components/TrackPage';
+import Analytics from './components/Analytics';
 
 function headingFor(user) {
   if (user.role === 'admin') {
@@ -32,13 +37,33 @@ function headingFor(user) {
 
 function App() {
   const [token, setToken] = useState(() => localStorage.getItem('token'));
-  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('user') || 'null'));
+  const [user, setUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('user') || 'null');
+    } catch {
+      return null;
+    }
+  });
   const [page, setPage] = useState('dashboard');
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [editingReport, setEditingReport] = useState(false);
   const [toasts, setToasts] = useState([]);
   const [authMode, setAuthMode] = useState('login');
+  const [theme, setTheme] = useState(() => document.documentElement.getAttribute('data-theme') || 'light');
+
+  const toggleTheme = () =>
+    setTheme((t) => {
+      const next = t === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      try {
+        localStorage.setItem('theme', next);
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
 
   const toast = useCallback((text, type = 'ok') => {
     const id = Date.now() + Math.random();
@@ -54,7 +79,8 @@ function App() {
   };
 
   const logout = () => {
-    localStorage.clear();
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setToken(null);
     setUser(null);
     setReports([]);
@@ -100,14 +126,25 @@ function App() {
     <div className="app-shell">
       <TopNav
         user={user}
+        token={token}
         page={page}
         setPage={setPage}
         onLogout={logout}
         authMode={authMode}
         setAuthMode={setAuthMode}
+        theme={theme}
+        toggleTheme={toggleTheme}
+        onUserUpdated={persistSession}
+        onToast={toast}
       />
 
-      {!token || !user ? (
+      {page === 'track' ? (
+        <TrackPage />
+      ) : page === 'help' ? (
+        <HelpPage setPage={setPage} />
+      ) : page === 'contact' ? (
+        <ContactPage user={user} onToast={toast} />
+      ) : !token || !user ? (
         <AuthScreen
           mode={authMode}
           setMode={setAuthMode}
@@ -133,7 +170,9 @@ function App() {
               onDone={(report) => {
                 setPage('dashboard');
                 loadReports();
-                if (report?.complaintRouting?.dispatched) {
+                if (report?.supported) {
+                  toast('Thanks! Your confirmation was added to the existing complaint');
+                } else if (report?.complaintRouting?.dispatched) {
                   toast('Pothole complaint sent to Government and City Road Contractor');
                 } else {
                   toast('Report submitted');
@@ -143,6 +182,8 @@ function App() {
             />
           ) : page === 'map' ? (
             <RoadMap reports={reports} onSelect={setSelected} />
+          ) : page === 'analytics' ? (
+            <Analytics token={token} role={user.role} />
           ) : (
             <Dashboard
               reports={reports}
@@ -151,27 +192,37 @@ function App() {
               token={token}
               reload={loadReports}
               onSelect={setSelected}
+              onEdit={(report) => {
+                setSelected(report);
+                setEditingReport(true);
+              }}
               onToast={toast}
             />
           )}
         </main>
       )}
 
-      {selected && (
+      {selected && user && (
         <ReportModal
           report={selected}
+          startEditing={editingReport}
           agency={agency}
           role={user.role}
           token={token}
-          onClose={() => setSelected(null)}
+          onClose={() => {
+            setSelected(null);
+            setEditingReport(false);
+          }}
           onUpdated={() => {
             loadReports();
             setSelected(null);
+            setEditingReport(false);
             toast('Report updated');
           }}
           onError={(m) => toast(m, 'err')}
         />
       )}
+      <Footer setPage={setPage} />
       <ToastHost toasts={toasts} />
     </div>
   );

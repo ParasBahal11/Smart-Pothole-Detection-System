@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { api, authHeaders, baseUrl } from '../api';
 
 function statusClass(status) {
@@ -9,11 +9,18 @@ function channelLabel(status) {
   return (status || 'queued').replace(/_/g, ' ');
 }
 
-export default function Dashboard({ reports, agency, role, token, reload, onSelect, onToast }) {
+export default function Dashboard({ reports, agency, role, token, reload, onSelect, onEdit, onToast }) {
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('all');
   const [severity, setSeverity] = useState('all');
   const [sort, setSort] = useState('newest');
+  const [feedbackSummary, setFeedbackSummary] = useState({ average: 0, count: 0, recent: [] });
+
+  useEffect(() => {
+    api('/reports/feedback/summary', { headers: authHeaders(token, false) })
+      .then(setFeedbackSummary)
+      .catch(() => setFeedbackSummary({ average: 0, count: 0, recent: [] }));
+  }, [token, reports]);
 
   const counts = useMemo(() => {
     const total = reports.length || 1;
@@ -64,6 +71,14 @@ export default function Dashboard({ reports, agency, role, token, reload, onSele
   }, [reports, q, status, severity, sort]);
 
   const updateStatus = async (id, next) => {
+    if (next === 'Repaired') {
+      const target = reports.find((x) => x._id === id);
+      if (!(target?.workImages || []).length) {
+        onToast?.('Upload photos of the completed work first, then mark it Repaired.', 'err');
+        if (target) onSelect(target);
+        return;
+      }
+    }
     try {
       await api(`/reports/${id}/status`, {
         method: 'PATCH',
@@ -111,6 +126,32 @@ export default function Dashboard({ reports, agency, role, token, reload, onSele
           <div className="value">{counts.repaired}</div>
         </div>
       </div>
+
+      <section className="panel community-feedback">
+        <div className="panel-head">
+          <h2>Community feedback</h2>
+          <span>{feedbackSummary.count} resolved report reviews</span>
+        </div>
+        <div className="feedback-score">
+          <strong>{feedbackSummary.count ? feedbackSummary.average.toFixed(1) : '—'}</strong>
+          <span>/ 5 average rating</span>
+        </div>
+        {feedbackSummary.recent.length > 0 ? (
+          <div className="feedback-list">
+            {feedbackSummary.recent.slice(0, 5).map((item) => (
+              <blockquote key={item._id}>
+                <span aria-label={`${item.rating} out of 5 stars`}>{'★'.repeat(item.rating)}{'☆'.repeat(5 - item.rating)}</span>
+                <p>{item.feedback}</p>
+                {(item.workImages || []).length > 0 && (
+                  <img className="feedback-work-img" src={baseUrl + item.workImages[0]} alt="Completed work" loading="lazy" />
+                )}
+              </blockquote>
+            ))}
+          </div>
+        ) : (
+          <p className="feedback-empty">No reviews have been submitted yet.</p>
+        )}
+      </section>
 
       <div className="panel">
         <div className="panel-head">
@@ -240,9 +281,14 @@ export default function Dashboard({ reports, agency, role, token, reload, onSele
                         <button type="button" className="icon-btn" onClick={() => onSelect(r)}>
                           View
                         </button>
-                        {role === 'admin' && (
+                        {role === 'user' && r.status === 'Pending' && (
+                          <button type="button" className="icon-btn" onClick={() => onEdit(r)}>
+                            Edit
+                          </button>
+                        )}
+                        {(role === 'admin' || role === 'user') && (
                           <button type="button" className="icon-btn danger" onClick={() => remove(r._id)}>
-                            Del
+                            Delete
                           </button>
                         )}
                       </div>
