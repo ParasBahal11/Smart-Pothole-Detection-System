@@ -36,6 +36,7 @@ function headingFor(user) {
 }
 
 function App() {
+  const [showIntro, setShowIntro] = useState(true);
   const [token, setToken] = useState(() => localStorage.getItem('token'));
   const [user, setUser] = useState(() => {
     try {
@@ -52,6 +53,11 @@ function App() {
   const [toasts, setToasts] = useState([]);
   const [authMode, setAuthMode] = useState('login');
   const [theme, setTheme] = useState(() => document.documentElement.getAttribute('data-theme') || 'light');
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setShowIntro(false), 3000);
+    return () => window.clearTimeout(timeout);
+  }, []);
 
   const toggleTheme = () =>
     setTheme((t) => {
@@ -124,6 +130,20 @@ function App() {
 
   return (
     <div className="app-shell">
+      {showIntro && (
+        <div className="roadguard-intro" role="status" aria-label="RoadGuard is loading">
+          <div className="intro-brand">
+            <span className="brand-mark intro-brand-mark" aria-hidden="true" />
+            <div className="intro-wordmark">Road<span>Guard</span></div>
+            <p className="intro-eyebrow">SMART ROAD SAFETY</p>
+            <div className="intro-road" aria-hidden="true">
+              <span />
+            </div>
+            <p className="intro-tagline">Safer roads. Stronger communities.</p>
+          </div>
+          <div className="intro-loading" aria-hidden="true"><span /></div>
+        </div>
+      )}
       <TopNav
         user={user}
         token={token}

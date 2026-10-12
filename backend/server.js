@@ -11,7 +11,7 @@ import contact from './routes/contact.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
-app.set('trust proxy', 1); // Render/Heroku-style reverse proxy: correct client IP for Turnstile
+app.set('trust proxy', 1); 
 
 app.use(cors({ origin: process.env.CLIENT_URL?.split(',') || true }));
 app.use(express.json());
@@ -36,11 +36,10 @@ app.use('/api/auth', auth);
 app.use('/api/reports', reports);
 app.use('/api/contact', contact);
 
-// Unknown API route -> JSON (not Express' default HTML page)
+
 app.use('/api', (req, res) => res.status(404).json({ message: `Route not found: ${req.method} ${req.originalUrl}` }));
 
-// Central error handler: multer errors (file too big / wrong type), bad JSON, uncaught route errors
-// eslint-disable-next-line no-unused-vars
+
 app.use((err, req, res, next) => {
   console.error(err);
   if (err.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ message: 'Image is too large (max 5 MB)' });
