@@ -2056,3 +2056,411 @@ html[data-theme='dark'] .badge.channel-queued {
 @media (max-width: 760px) {
   .analytics-grid { grid-template-columns: 1fr; }
 }
+
+/* ---------- responsive layout refinements ---------- */
+@media (max-width: 1180px) {
+  .topnav {
+    position: sticky;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 12px;
+  }
+
+  .menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    margin-left: auto;
+  }
+
+  .nav-actions {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: calc(100vh - 68px);
+    overflow-y: auto;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 4px;
+    padding: 10px clamp(1rem, 4vw, 2.5rem) 14px;
+    margin: 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    box-shadow: var(--shadow);
+  }
+
+  .nav-actions.open {
+    display: flex;
+  }
+
+  .nav-actions button {
+    min-height: 44px;
+    text-align: left;
+  }
+
+  .nav-actions .theme-toggle {
+    width: 44px;
+    height: 44px;
+    align-self: flex-start;
+    justify-content: center;
+  }
+
+  .nav-actions .logout {
+    margin-left: 0;
+  }
+
+  .nav-profile {
+    max-width: none;
+    margin: 6px 0;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 960px) {
+  .footer-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .footer-grid > :first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .page {
+    width: min(100% - 28px, 620px);
+    margin: 20px auto 32px;
+  }
+
+  .page-head {
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .page-head > div:first-child,
+  .page-head p {
+    min-width: 0;
+  }
+
+  .page-head p {
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .stat-card {
+    min-width: 0;
+    padding: 14px 14px 13px;
+  }
+
+  .stat-card .label {
+    font-size: 0.8rem;
+    overflow-wrap: anywhere;
+  }
+
+  .stat-card .value {
+    font-size: 1.65rem;
+  }
+
+  .panel {
+    min-width: 0;
+    padding: 14px;
+    border-radius: 15px;
+  }
+
+  .panel-head {
+    align-items: flex-start;
+  }
+
+  .panel-head h2,
+  .panel-head span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filters > :first-child {
+    grid-column: 1 / -1;
+  }
+
+  .table-wrap {
+    max-width: 100%;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-wrap table {
+    min-width: 720px;
+  }
+
+  .row-actions {
+    flex-wrap: wrap;
+  }
+
+  .report-layout,
+  .analytics-grid,
+  .help-grid,
+  .contact-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .analytics-grid .wide {
+    grid-column: auto;
+  }
+
+  .route-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .auth-shell {
+    min-height: auto;
+  }
+
+  .auth-visual {
+    min-height: 240px;
+    padding: 28px 22px;
+  }
+
+  .auth-visual .brand {
+    top: 18px;
+    left: 20px;
+  }
+
+  .auth-visual h1 {
+    font-size: clamp(1.8rem, 7vw, 2.5rem);
+  }
+
+  .auth-panel {
+    padding: 20px 14px 28px;
+  }
+
+  .auth-card {
+    padding: 22px;
+    border-radius: 18px;
+  }
+
+  .map-panel .map {
+    height: min(58vh, 460px);
+    min-height: 300px;
+  }
+
+  .modal-backdrop {
+    padding: 10px;
+    align-items: end;
+  }
+
+  .modal {
+    width: 100%;
+    max-height: 92vh;
+    border-radius: 18px 18px 12px 12px;
+  }
+
+  .modal-body {
+    padding: 16px;
+  }
+
+  .modal-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .toast-host {
+    left: 12px;
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  .toast {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .site-footer {
+    padding: 26px 18px 16px;
+  }
+
+  .footer-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 22px;
+  }
+
+  .footer-grid > :first-child {
+    grid-column: auto;
+  }
+
+  .footer-bottom {
+    flex-direction: column;
+    overflow-wrap: anywhere;
+  }
+
+  .loc-box {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .loc-box code {
+    overflow-wrap: anywhere;
+  }
+
+  .track-form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .track-form input,
+  .track-form button {
+    width: 100%;
+  }
+
+  .donut-wrap {
+    gap: 12px;
+  }
+
+  .legend.inline {
+    flex-wrap: wrap;
+    gap: 8px 16px;
+  }
+
+  .hbar-row {
+    grid-template-columns: minmax(52px, 70px) minmax(0, 1fr) 24px;
+    gap: 7px;
+  }
+
+  .monthly {
+    max-width: 100%;
+  }
+
+  .dup-item {
+    flex-wrap: wrap;
+  }
+
+  .dup-item > div {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 520px) {
+  .brand {
+    gap: 8px;
+    font-size: 1.15rem;
+  }
+
+  .brand-mark {
+    width: 32px;
+    height: 32px;
+  }
+
+  .topnav {
+    height: 60px;
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .nav-actions {
+    max-height: calc(100vh - 60px);
+  }
+
+  .page {
+    width: calc(100% - 24px);
+    margin-top: 16px;
+  }
+
+  .role-chip {
+    padding: 7px 10px;
+    font-size: 0.7rem;
+  }
+
+  .filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .filters > :first-child {
+    grid-column: auto;
+  }
+
+  .route-grid,
+  .modal-meta {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .auth-visual {
+    min-height: 220px;
+    padding: 24px 18px;
+  }
+
+  .auth-visual .brand {
+    font-size: 1.7rem;
+  }
+
+  .auth-visual p {
+    font-size: 0.95rem;
+  }
+
+  .auth-card {
+    padding: 18px;
+  }
+
+  .dropzone {
+    padding: 24px 14px;
+  }
+
+  .loc-box button,
+  .preview-actions button,
+  .profile-edit-actions button {
+    width: 100%;
+  }
+
+  .profile-edit-actions {
+    flex-direction: column-reverse;
+  }
+
+  .donut {
+    width: min(140px, 42vw);
+    height: auto;
+  }
+
+  .feedback-score {
+    flex-wrap: wrap;
+  }
+
+  .map-panel .map {
+    height: 55vh;
+    min-height: 260px;
+  }
+}
+
+@media (max-width: 360px) {
+  .page {
+    width: calc(100% - 20px);
+  }
+
+  .panel {
+    padding: 12px;
+  }
+
+  .stats-grid {
+    gap: 8px;
+  }
+
+  .stat-card {
+    padding: 12px 10px;
+  }
+
+  .stat-card .value {
+    font-size: 1.45rem;
+  }
+
+  .page-head h1 {
+    font-size: 1.45rem;
+  }
+}
