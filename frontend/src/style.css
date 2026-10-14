@@ -2232,12 +2232,13 @@ html[data-theme='dark'] .badge.channel-queued {
   }
 
   .auth-visual .brand {
-    top: 18px;
-    left: 20px;
+    display: none;
   }
 
   .auth-visual h1 {
     font-size: clamp(1.8rem, 7vw, 2.5rem);
+    max-width: 100%;
+    overflow-wrap: anywhere;
   }
 
   .auth-panel {
